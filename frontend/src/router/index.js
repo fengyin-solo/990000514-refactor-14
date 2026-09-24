@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { hasSession } from '../auth/session.js'
 
 const routes = [
   {
@@ -33,11 +34,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-
-  if (to.meta.requiresAuth && !token) {
+  if (to.meta.requiresAuth && !hasSession()) {
     next('/login')
-  } else if (to.meta.guest && token) {
+  } else if (to.meta.guest && hasSession()) {
     next('/')
   } else {
     next()

@@ -6,15 +6,27 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
+import { onSessionChange } from './auth/session.js'
 import Navbar from './components/Navbar.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.loadFromStorage()
+// 多标签页：一处登录 / 退出 / 过期，其他标签页的界面（store 内已同步）与路由随之对齐
+const unsubscribe = onSessionChange((session, source) => {
+  if (source !== 'external') return
+  const route = router.currentRoute.value
+  if (!session.token && route.meta.requiresAuth) {
+    router.push('/login')
+  } else if (session.token && route.meta.guest) {
+    router.push('/')
+  }
 })
+
+onUnmounted(unsubscribe)
 </script>
 
 <style>

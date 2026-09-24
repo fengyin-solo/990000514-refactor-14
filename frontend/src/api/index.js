@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getToken, clearSession } from '../auth/session.js'
 
 const api = axios.create({
   baseURL: '/api',
@@ -7,20 +8,19 @@ const api = axios.create({
 
 // Attach JWT token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
-// Handle 401 responses globally
+// Handle 401 responses globally: token 缺失或已过期，统一走清理逻辑后回到登录页
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearSession()
       window.location.href = '/login'
     }
     return Promise.reject(error)
