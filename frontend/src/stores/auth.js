@@ -1,46 +1,46 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '../api/index.js'
+import { getSession, saveSession, clearSession } from '../utils/auth.js'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
-  const token = ref(null)
+  // Restore once, at store creation, so refresh and direct navigation
+  // are consistent without a separate loadFromStorage() call.
+  const session = getSession()
+  const user = ref(session ? session.user : null)
+  const token = ref(session ? session.token : null)
 
   const isLoggedIn = computed(() => !!token.value)
 
-  function loadFromStorage() {
-    const savedToken = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
-    if (savedToken && savedUser) {
-      token.value = savedToken
-      user.value = JSON.parse(savedUser)
-    }
+  // Save both the reactive state and persistence layer together.
+  function applySession(newToken, newUser) {
+    token.value = newToken
+    user.value = newUser
+    saveSession(newToken, newUser)
+  }
+
+  // Clear both the reactive state and persistence layer together.
+  function clearAuth() {
+    token.value = null
+    user.value = null
+    clearSession()
   }
 
   async function login(username, password) {
     const res = await authApi.login(username, password)
-    token.value = res.data.token
-    user.value = res.data.user
-    localStorage.setItem('token', res.data.token)
-    localStorage.setItem('user', JSON.stringify(res.data.user))
+    applySession(res.data.token, res.data.user)
     return res.data
   }
 
   async function register(username, password) {
     const res = await authApi.register(username, password)
-    token.value = res.data.token
-    user.value = res.data.user
-    localStorage.setItem('token', res.data.token)
-    localStorage.setItem('user', JSON.stringify(res.data.user))
+    applySession(res.data.token, res.data.user)
     return res.data
   }
 
   function logout() {
-    user.value = null
-    token.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearAuth()
   }
 
-  return { user, token, isLoggedIn, loadFromStorage, login, register, logout }
+  return { user, token, isLoggedIn, login, register, logout }
 })
